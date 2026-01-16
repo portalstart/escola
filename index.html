@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Educativo - Leren Cloud</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #64748b;
+            --accent: #f59e0b;
+            --bg-main: #f8fafc;
+            --bg-card: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --sidebar-bg: #1e293b;
+            --sidebar-text: #f1f5f9;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            display: flex;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background-color: var(--sidebar-bg);
+            color: var(--sidebar-text);
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease;
+            z-index: 100;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 2rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .nav-menu {
+            flex: 1;
+            padding: 1rem 0;
+            overflow-y: auto;
+        }
+
+        .nav-item {
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+            color: #cbd5e1;
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            background-color: #334155;
+            color: #fff;
+        }
+
+        .nav-item.active {
+            border-left: 4px solid var(--primary);
+        }
+
+        .grades-submenu {
+            padding-left: 0.5rem;
+            font-size: 0.9rem;
+            display: none;
+            background: #0f172a;
+        }
+
+        .grades-submenu.show {
+            display: block;
+        }
+
+        .grades-submenu .nav-item {
+            padding: 0.5rem 1.5rem 0.5rem 3.5rem;
+        }
+
+        /* Main Layout */
+        .app-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        header {
+            background-color: var(--bg-card);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .search-container {
+            display: flex;
+            align-items: center;
+            background: #f1f5f9;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .search-container input {
+            border: none;
+            background: transparent;
+            padding: 0.25rem;
+            width: 100%;
+            outline: none;
+        }
+
+        main {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 2rem;
+        }
+
+        @media (max-width: 1024px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Card Styles */
+        .card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.9rem;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-outline {
+            border: 1px solid var(--border);
+            background: white;
+            color: var(--text-main);
+        }
+
+        .btn-outline:hover {
+            background: #f8fafc;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            opacity: 0.9;
+        }
+
+        .btn-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        /* Tables */
+        .table-container {
+            overflow-x: auto;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        .data-table th {
+            padding: 1rem;
+            border-bottom: 2px solid var(--border);
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+
+        .data-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .data-table tr:hover {
+            background: #f8fafc;
+        }
+
+        /* Tools */
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .tool-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            border-top: 4px solid var(--primary);
+            position: relative;
+        }
+
+        .tool-actions {
+            display: flex;
+            gap: 5px;
+            margin-top: 1rem;
+        }
+
+        /* Announcements */
+        .announcement {
+            padding: 1.25rem;
+            border-radius: 8px;
+            background: #f8fafc;
+            margin-bottom: 1rem;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+
+        .announcement.important {
+            border-left: 4px solid var(--danger);
+            background: #fef2f2;
+        }
+
+        .announcement.info {
+            border-left: 4px solid var(--primary);
+        }
+
+        .ann-actions {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 5px;
+        }
+
+        .ann-actions button {
+            border: none;
+            background: none;
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: color 0.2s;
+        }
+
+        .ann-actions button:hover {
+            color: var(--text-main);
+        }
+
+        /* Stats */
+        .stats-container {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .stat-box {
+            flex: 1;
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Loading */
+        .loader {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100px;
+        }
+
+        /* Footer */
+        footer {
+            padding: 1rem;
+            text-align: center;
+            border-top: 1px solid var(--border);
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            background: white;
+        }
+
+        footer a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        /* Chat Widget */
+        .chat-widget {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        .chat-button {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .chat-button:hover {
+            transform: scale(1.1);
+        }
+
+        .chat-window {
+            width: 350px;
+            height: 450px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            margin-bottom: 1rem;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .chat-window.active {
+            display: flex;
+        }
+
+        .chat-header {
+            background: var(--primary);
+            color: white;
+            padding: 1.25rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 1rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: #f8fafc;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 0.75rem 1rem;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .message.support {
+            align-self: flex-start;
+            background: white;
+            border: 1px solid var(--border);
+            border-bottom-left-radius: 2px;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background: var(--primary);
+            color: white;
+            border-bottom-right-radius: 2px;
+        }
+
+        .chat-input {
+            padding: 1rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 8px;
+        }
+
+        .chat-input input {
+            flex: 1;
+            border: 1px solid var(--border);
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            outline: none;
+        }
+
+        .chat-input input:focus {
+            border-color: var(--primary);
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        #content-area>* {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        /* Calendar Styles */
+        .calendar-card {
+            padding: 1rem !important;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            text-align: center;
+        }
+
+        .weekday {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            padding: 5px 0;
+            text-transform: uppercase;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            border-radius: 6px;
+            cursor: default;
+            transition: background 0.2s;
+        }
+
+        .calendar-day:hover:not(.empty) {
+            background: #f1f5f9;
+        }
+
+        .calendar-day.today {
+            background: var(--primary);
+            color: white;
+            font-weight: 700;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+        }
+
+        .calendar-day.empty {
+            cursor: default;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <i data-lucide="graduation-cap" style="color: var(--primary);"></i>
+            <h1>Portal Educativo</h1>
+        </div>
+        <div class="nav-menu">
+            <div class="nav-item active" data-view="dashboard">
+                <i data-lucide="layout-dashboard"></i>
+                Dashboard
+            </div>
+            <div class="nav-item" id="grades-nav-toggle">
+                <i data-lucide="book-open"></i>
+                Grados
+                <i data-lucide="chevron-down" style="margin-left: auto; width: 16px;" id="chevron-icon"></i>
+            </div>
+            <div class="grades-submenu" id="grades-submenu">
+                <div class="nav-item grade-link" data-grade="3ro Primaria">3ro Primaria</div>
+                <div id="dynamic-grades-sidebar"></div>
+            </div>
+            <div class="nav-item" data-view="formative">
+                <i data-lucide="code"></i>
+                Códigos Formative
+            </div>
+            <div class="nav-item" data-view="tools">
+                <i data-lucide="wrench"></i>
+                Herramientas
+            </div>
+        </div>
+    </nav>
+
+    <div class="app-container">
+        <header>
+            <div class="search-container">
+                <i data-lucide="search" style="width: 18px; color: var(--text-muted);"></i>
+                <input type="text" id="global-search" placeholder="Buscador global (grado, código, herramienta)...">
+            </div>
+            <button class="btn btn-outline" onclick="handleAddAnn()">
+                <i data-lucide="plus"></i> Nuevo Anuncio
+            </button>
+        </header>
+
+        <main id="content-area"></main>
+
+        <footer>
+            Technology by <a href="https://www.lerencloud.com/" target="_blank">Leren Cloud</a>
+        </footer>
+    </div>
+
+    <!-- Chat Widget -->
+    <div class="chat-widget">
+        <div class="chat-window" id="chat-window">
+            <div class="chat-header">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <i data-lucide="message-circle" style="width:20px;"></i>
+                    <span style="font-weight: 600;">Soporte Leren Cloud</span>
+                </div>
+                <button onclick="toggleChat()" style="background:none; border:none; color:white; cursor:pointer;"><i
+                        data-lucide="x" style="width:20px;"></i></button>
+            </div>
+            <div class="chat-messages" id="chat-messages">
+                <div class="message support">
+                    ¡Hola! 👋 Soy el asistente de Leren Cloud. ¿En qué puedo ayudarte hoy con tu plataforma educativa?
+                </div>
+            </div>
+            <div class="chat-input">
+                <input type="text" id="chat-input-field" placeholder="Escribe tu mensaje...">
+                <button class="btn btn-primary btn-sm" onclick="sendChatMessage()" style="padding: 0.5rem;"><i
+                        data-lucide="send" style="width:16px;"></i></button>
+            </div>
+        </div>
+        <div class="chat-button" onclick="toggleChat()">
+            <i data-lucide="message-square"></i>
+        </div>
+    </div>
+
+    <script>
+        // --- Supabase Config ---
+        const SB_URL = "https://vlesteleamzfsabofmrh.supabase.co";
+        const SB_KEY = "sb_publishable_jfCoYQXQAQh4FHjCqwfENw_wzOZj9aX";
+        const sbClient = supabase.createClient(SB_URL, SB_KEY);
+        const ADMIN_KEY = "5686";
+
+        // --- Data ---
+        const formativeCodes = [
+            { grade: "3ro Primaria", code: "ZH4TF9" },
+            { grade: "4to A", code: "8BNYS8" }, { grade: "4to B", code: "4N8RUB" },
+            { grade: "5to A", code: "WCPA9P" }, { grade: "5to B", code: "R43DG4" },
+            { grade: "6to A", code: "G9GJTQ" }, { grade: "6to B", code: "ADZWE2" },
+            { grade: "7mo A", code: "UQ7WAM" }, { grade: "7mo B", code: "33367B" },
+            { grade: "8vo A", code: "PDLLZT" }, { grade: "8vo B", code: "B79BGZ" },
+            { grade: "9no A", code: "AYH5XZ" }, { grade: "9no B", code: "CMKYUV" },
+            { grade: "10mo A", code: "9WRGW6" }, { grade: "10mo B", code: "QX4SZP" },
+            { grade: "11vo A", code: "2Q44CA" }, { grade: "11vo B", code: "DUMR64" }
+        ];
+
+        let announcements = [];
+        let tools = [];
+
+        // --- App Logic ---
+        const contentArea = document.getElementById('content-area');
+
+        async function init() {
+            renderGradesSidebar();
+            attachEventListeners();
+            await fetchData();
+            renderView('dashboard');
+            lucide.createIcons();
+        }
+
+        async function fetchData() {
+            try {
+                const { data: annData } = await sbClient.from('announcements').select('*').order('id', { ascending: false });
+                const { data: toolsData } = await sbClient.from('tools').select('*').order('name');
+                announcements = annData || [];
+                tools = toolsData || [];
+            } catch (e) {
+                console.error("Fetch error:", e);
+            }
+        }
+
+        function renderGradesSidebar() {
+            const container = document.getElementById('dynamic-grades-sidebar');
+            let html = '';
+            const suffixes = { 4: 'to', 5: 'to', 6: 'to', 7: 'mo', 8: 'vo', 9: 'no', 10: 'mo', 11: 'vo' };
+            for (let i = 4; i <= 11; i++) {
+                const label = `${i}${suffixes[i]}`;
+                html += `
+                    <div class="nav-item grade-link" data-grade="${label} A">${label} A</div>
+                    <div class="nav-item grade-link" data-grade="${label} B">${label} B</div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        function checkAdmin() {
+            const pass = prompt("Ingrese la clave administrativa:");
+            if (pass === ADMIN_KEY) return true;
+            alert("Clave incorrecta.");
+            return false;
+        }
+
+        function attachEventListeners() {
+            document.querySelectorAll('[data-view]').forEach(item => {
+                item.addEventListener('click', () => {
+                    renderView(item.getAttribute('data-view'));
+                    document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+                    item.classList.add('active');
+                });
+            });
+
+            document.getElementById('grades-nav-toggle').addEventListener('click', () => {
+                const submenu = document.getElementById('grades-submenu');
+                const icon = document.getElementById('chevron-icon');
+                submenu.classList.toggle('show');
+                icon.style.transform = submenu.classList.contains('show') ? 'rotate(180deg)' : 'rotate(0deg)';
+            });
+
+            document.addEventListener('click', (e) => {
+                if (e.target.classList.contains('grade-link')) {
+                    const grade = e.target.getAttribute('data-grade');
+                    renderView('grade', grade);
+                    document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+                    e.target.classList.add('active');
+                }
+            });
+
+            document.getElementById('global-search').addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                if (query.length > 2) handleSearch(query);
+                else if (query.length === 0) renderView('dashboard');
+            });
+        }
+
+        async function renderView(view, param = null) {
+            contentArea.innerHTML = '<div class="loader"><div style="border: 3px solid #f3f3f3; border-top: 3px solid var(--primary); border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite;"></div><style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style></div>';
+
+            // Re-fetch data if needed (optional, for real-time feel)
+            if (view === 'dashboard' || view === 'tools') await fetchData();
+
+            contentArea.innerHTML = '';
+
+            switch (view) {
+                case 'dashboard':
+                    renderDashboard();
+                    break;
+                case 'formative':
+                    renderFormative();
+                    break;
+                case 'tools':
+                    renderTools();
+                    break;
+                case 'grade':
+                    renderGradeView(param);
+                    break;
+            }
+            lucide.createIcons();
+        }
+
+        function generateCalendarHTML() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+            const today = now.getDate();
+
+            const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const firstDayIndex = new Date(year, month, 1).getDay();
+
+            // Adjust for Monday start (0=Sun, 1=Mon... -> 0=Mon, 6=Sun)
+            let adjustedFirstDay = firstDayIndex === 0 ? 6 : firstDayIndex - 1;
+
+            let html = `
+                <div class="calendar-header">
+                    <span>${monthNames[month]} ${year}</span>
+                </div>
+                <div class="calendar-grid">
+                    <div class="weekday">L</div><div class="weekday">M</div><div class="weekday">M</div>
+                    <div class="weekday">J</div><div class="weekday">V</div><div class="weekday">S</div>
+                    <div class="weekday">D</div>
+            `;
+
+            // Empty slots before first day
+            for (let i = 0; i < adjustedFirstDay; i++) {
+                html += '<div class="calendar-day empty"></div>';
+            }
+
+            // Days of the month
+            for (let i = 1; i <= daysInMonth; i++) {
+                const isToday = i === today ? 'today' : '';
+                html += `<div class="calendar-day ${isToday}">${i}</div>`;
+            }
+
+            html += '</div>';
+            return html;
+        }
+
+        function renderDashboard() {
+            contentArea.innerHTML = `
+                <div class="dashboard-grid">
+                    <div>
+                        <div class="card">
+                            <div class="card-title"><i data-lucide="megaphone"></i> Anuncios Escolares</div>
+                            ${announcements.length === 0 ? '<p style="text-align:center; color:var(--text-muted);">No hay anuncios.</p>' :
+                    announcements.map(a => `
+                                <div class="announcement ${a.type}">
+                                    <div class="ann-actions">
+                                        <button onclick="handleEditAnn(${a.id})"><i data-lucide="edit-3" style="width:16px;"></i></button>
+                                        <button onclick="handleDeleteAnn(${a.id})" style="color:var(--danger)"><i data-lucide="trash-2" style="width:16px;"></i></button>
+                                    </div>
+                                    <strong>${a.title}</strong>
+                                    <p>${a.content}</p>
+                                    <small>${a.date}</small>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="card">
+                            <div class="card-title"><i data-lucide="bar-chart-3"></i> Estadísticas Visuales</div>
+                            <div class="stats-container">
+                                <div class="stat-box"><div class="stat-value">${formativeCodes.length}</div><div class="stat-label">Grados Activos</div></div>
+                                <div class="stat-box"><div class="stat-value">${tools.length}</div><div class="stat-label">Herramientas</div></div>
+                                <div class="stat-box"><div class="stat-value">SBS</div><div class="stat-label">Cloud Connected</div></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="card calendar-card">
+                            <div class="card-title"><i data-lucide="calendar"></i> Calendario</div>
+                            ${generateCalendarHTML()}
+                        </div>
+                        <div class="card">
+                            <div class="card-title"><i data-lucide="info"></i> Mensajes Importantes</div>
+                            <p style="font-size:0.9rem; color:var(--text-muted);">
+                                Todos los cambios se sincronizan automáticamente con la base de datos segura.
+                            </p>
+                        </div>
+                        <div class="card">
+                            <div class="card-title"><i data-lucide="external-link"></i> Accesos Rápidos</div>
+                            <button class="btn btn-primary" style="width:100%" onclick="window.open('https://www.typingclub.com/')">Ir a TypingClub</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderFormative() {
+            contentArea.innerHTML = `
+                <div class="card">
+                    <div class="card-title"><i data-lucide="book-open"></i> Clases de Formative 2026</div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr><th>Grado / Sección</th><th>Código</th><th>Acciones</th></tr>
+                            </thead>
+                            <tbody>
+                                ${formativeCodes.map(c => `
+                                    <tr>
+                                        <td><strong>${c.grade}</strong></td>
+                                        <td><code>${c.code}</code></td>
+                                        <td style="display:flex; gap:5px;">
+                                            <button class="btn btn-primary btn-sm" onclick="window.open('https://app.formative.com/join?code=${c.code}')">Unirse</button>
+                                            <button class="btn btn-outline btn-sm" onclick="copyCode('${c.code}')">Copiar</button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderTools() {
+            contentArea.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                    <h2>Herramientas Educativas</h2>
+                    <button class="btn btn-primary" onclick="handleAddTool()"><i data-lucide="plus"></i> Nueva Herramienta</button>
+                </div>
+                <div class="tools-grid">
+                    ${tools.length === 0 ? '<p>No hay herramientas registradas.</p>' :
+                    tools.map(t => `
+                        <div class="tool-card">
+                            <h3>${t.name}</h3>
+                            <p style="margin: 0.5rem 0; font-size: 0.9rem; color: var(--text-muted);">${t.description}</p>
+                            <div style="margin-bottom:1rem; font-size:0.8rem;"><strong>Recomendado:</strong> ${t.recommended_grade || 'General'}</div>
+                            <div class="tool-actions">
+                                <a href="${t.url}" target="_blank" class="btn btn-primary btn-sm" style="flex:1">Abrir</a>
+                                <button class="btn btn-outline btn-sm" onclick="handleEditTool(${t.id})"><i data-lucide="edit-2" style="width:14px;"></i></button>
+                                <button class="btn btn-outline btn-sm text-danger" onclick="handleDeleteTool(${t.id})" style="color:var(--danger); border-color:var(--danger);"><i data-lucide="trash-2" style="width:14px;"></i></button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function renderGradeView(grade) {
+            const data = formativeCodes.find(c => c.grade === grade);
+            const is7 = grade.includes('7mo');
+
+            contentArea.innerHTML = `
+                <div style="margin-bottom: 2rem;">
+                    <h2 style="font-size: 1.8rem; color: var(--text-main);">${grade}</h2>
+                    <p style="color: var(--text-muted);">Bienvenido al espacio centralizado de recursos y seguimiento escolar.</p>
+                </div>
+
+                <div class="dashboard-grid">
+                    <section>
+                        <div class="card" style="border-top: 5px solid var(--primary);">
+                            <div class="card-title">
+                                <i data-lucide="book-open" style="color: var(--primary);"></i>
+                                Plataforma de Evaluación (Formative)
+                            </div>
+                            <div style="background: var(--bg-main); padding: 1.5rem; border-radius: 8px; border: 1px dashed var(--border);">
+                                ${data ? `
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <div>
+                                            <span style="font-size: 0.9rem; color: var(--text-muted);">Código de Clase 2026:</span>
+                                            <div style="font-size: 1.5rem; font-weight: 700; letter-spacing: 2px; color: var(--primary); margin-top: 0.25rem;">${data.code}</div>
+                                        </div>
+                                        <div style="display: flex; gap: 10px;">
+                                            <button class="btn btn-outline" onclick="copyCode('${data.code}')">
+                                                <i data-lucide="copy" style="width:16px;"></i> Copiar
+                                            </button>
+                                            <button class="btn btn-primary" onclick="window.open('https://app.formative.com/join?code=${data.code}')">
+                                                <i data-lucide="external-link" style="width:16px;"></i> Ingresar
+                                            </button>
+                                        </div>
+                                    </div>
+                                ` : `
+                                    <p style="color: var(--danger);"><i data-lucide="alert-circle" style="width:16px; vertical-align:middle;"></i> No se ha asignado un código de Formative para esta sección aún.</p>
+                                `}
+                            </div>
+                            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 1rem;">
+                                Use este código para unirse a las sesiones de trabajo sincrónico y evaluaciones oficiales.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-title"><i data-lucide="list-checks"></i> Objetivos Pedagógicos Semanales</div>
+                            <ul style="list-style: none; padding-left: 0.5rem; font-size: 0.9rem; color: var(--text-muted);">
+                                <li style="margin-bottom: 8px;"><i data-lucide="check-circle-2" style="width:14px; color:var(--success); vertical-align:middle;"></i> Integración de herramientas digitales en el flujo de trabajo.</li>
+                                <li style="margin-bottom: 8px;"><i data-lucide="check-circle-2" style="width:14px; color:var(--success); vertical-align:middle;"></i> Desarrollo de habilidades autónomas en entornos virtuales.</li>
+                                <li style="margin-bottom: 8px;"><i data-lucide="check-circle-2" style="width:14px; color:var(--success); vertical-align:middle;"></i> Seguimiento continuo del récord diario de actividades.</li>
+                            </ul>
+                        </div>
+                    </section>
+
+                    <aside>
+                        ${is7 ? `
+                            <div class="card" style="background: linear-gradient(135deg, white 0%, #eff6ff 100%); border: 1px solid var(--primary);">
+                                <div class="card-title" style="color: var(--primary);">
+                                    <i data-lucide="star"></i> Requisito TypingClub
+                                </div>
+                                <p style="font-size: 0.9rem; line-height: 1.4; margin-bottom: 1.25rem;">
+                                    Como estudiante de <strong>7mo Grado</strong>, es obligatorio mantener el registro diario de velocidad y precisión.
+                                </p>
+                                <button class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="alert('Sistema de registro de récord contactado. Sincronización completa.')">
+                                    <i data-lucide="save"></i> Registrar Récord Diario
+                                </button>
+                            </div>
+                        ` : ''}
+
+                        <div class="card">
+                            <div class="card-title"><i data-lucide="help-circle"></i> Soporte Leren Cloud</div>
+                            <p style="font-size: 0.85rem; color: var(--text-muted);">¿Tienes problemas con el código? Contacta con el equipo de soporte técnico.</p>
+                            <button class="btn btn-outline btn-sm" style="width: 100%; margin-top: 10px;" onclick="toggleChat(true)">Abrir Chat de Ayuda</button>
+                        </div>
+                    </aside>
+                </div>
+            `;
+        }
+
+        // --- Chat Logic ---
+        window.toggleChat = (forceOpen = false) => {
+            const window = document.getElementById('chat-window');
+            if (forceOpen) window.classList.add('active');
+            else window.classList.toggle('active');
+            lucide.createIcons();
+        };
+
+        window.sendChatMessage = () => {
+            const input = document.getElementById('chat-input-field');
+            const messages = document.getElementById('chat-messages');
+            if (!input.value.trim()) return;
+
+            // User Message
+            const userMsg = document.createElement('div');
+            userMsg.className = 'message user';
+            userMsg.textContent = input.value;
+            messages.appendChild(userMsg);
+
+            const userText = input.value.toLowerCase();
+            input.value = '';
+            messages.scrollTop = messages.scrollHeight;
+
+            // Automated Response Logic
+            setTimeout(() => {
+                const supportMsg = document.createElement('div');
+                supportMsg.className = 'message support';
+
+                // 1. Check for Grade/Class Codes
+                const foundCode = formativeCodes.find(c => userText.includes(c.grade.toLowerCase()));
+
+                // 2. Check for Tools
+                const foundTool = tools.find(t => userText.includes(t.name.toLowerCase()));
+
+                // 3. Check for Announcements
+                const foundAnn = announcements.find(a => userText.includes(a.title.toLowerCase()));
+
+                if (foundCode) {
+                    supportMsg.innerHTML = `He encontrado el código que buscas para <strong>${foundCode.grade}</strong>: <br><br> <code style="background:#eee; padding:2px 5px; border-radius:4px; font-size:1.1rem; color:var(--primary); font-weight:bold;">${foundCode.code}</code> <br><br> ¿Te gustaría que te ayude con algo más?`;
+                } else if (foundTool) {
+                    supportMsg.innerHTML = `He encontrado la herramienta <strong>${foundTool.name}</strong>. <br> <small>${foundTool.description}</small> <br><br> <a href="${foundTool.url}" target="_blank" class="btn btn-primary btn-sm" style="width:100%; justify-content:center;">Abrir Herramienta</a>`;
+                } else if (foundAnn) {
+                    supportMsg.innerHTML = `He encontrado información sobre "<strong>${foundAnn.title}</strong>": <br><br> ${foundAnn.content} <br><br> Fecha: ${foundAnn.date}`;
+                } else if (userText.includes('creador') || userText.includes('diseño') || userText.includes('hizo') || userText.includes('quien')) {
+                    supportMsg.innerHTML = `Esta plataforma fue diseñada por <strong>Elvis Santizo</strong> con tecnología de <strong>Leren Cloud</strong>. 🚀`;
+                } else if (userText.includes('formative') || userText.includes('codigo') || userText.includes('clase')) {
+                    supportMsg.textContent = "Para brindarte el código exacto, por favor dime de qué grado y sección necesitas información (ejemplo: '4to A' o '7mo B').";
+                } else if (userText.includes('herramienta') || userText.includes('typing')) {
+                    supportMsg.textContent = "¿Buscas una herramienta específica? Tenemos TypingClub y otras más en la sección 'Herramientas'. Prueba escribiendo el nombre de la herramienta.";
+                } else {
+                    supportMsg.textContent = "No he podido encontrar una respuesta exacta para tu consulta. ¿Podrías ser más específico con el grado, la herramienta o el anuncio que buscas? Un agente también revisará este mensaje pronto.";
+                }
+
+                messages.appendChild(supportMsg);
+                messages.scrollTop = messages.scrollHeight;
+                lucide.createIcons();
+            }, 800);
+        };
+
+        document.getElementById('chat-input-field')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendChatMessage();
+        });
+
+        // --- CRUD Actions ---
+
+        // Announcements
+        window.handleAddAnn = async () => {
+            if (!checkAdmin()) return;
+            const title = prompt("Título del anuncio:");
+            const content = prompt("Contenido:");
+            if (title && content) {
+                const { error } = await sbClient.from('announcements').insert([{ title, content, type: 'info' }]);
+                if (error) alert("Error al guardar: " + error.message);
+                else renderView('dashboard');
+            }
+        };
+
+        window.handleEditAnn = async (id) => {
+            if (!checkAdmin()) return;
+            const ann = announcements.find(a => a.id === id);
+            const title = prompt("Editar Título:", ann.title);
+            const content = prompt("Editar Contenido:", ann.content);
+            if (title && content) {
+                const { error } = await sbClient.from('announcements').update({ title, content }).eq('id', id);
+                if (error) alert("Error: " + error.message);
+                else renderView('dashboard');
+            }
+        };
+
+        window.handleDeleteAnn = async (id) => {
+            if (!checkAdmin()) return;
+            if (confirm("¿Seguro que deseas eliminar este anuncio?")) {
+                const { error } = await sbClient.from('announcements').delete().eq('id', id);
+                if (error) alert("Error: " + error.message);
+                else renderView('dashboard');
+            }
+        };
+
+        // Tools
+        window.handleAddTool = async () => {
+            if (!checkAdmin()) return;
+            const name = prompt("Nombre:");
+            const url = prompt("URL:");
+            const desc = prompt("Descripción:");
+            const grade = prompt("Grado Recomendado (opcional):");
+            if (name && url) {
+                const { error } = await sbClient.from('tools').insert([{ name, url, description: desc, recommended_grade: grade }]);
+                if (error) alert("Error: " + error.message);
+                else renderView('tools');
+            }
+        };
+
+        window.handleEditTool = async (id) => {
+            if (!checkAdmin()) return;
+            const tool = tools.find(t => t.id === id);
+            const name = prompt("Editar Nombre:", tool.name);
+            const url = prompt("Editar URL:", tool.url);
+            const desc = prompt("Editar Descripción:", tool.description);
+            const grade = prompt("Editar Grado:", tool.recommended_grade);
+            if (name && url) {
+                const { error } = await sbClient.from('tools').update({ name, url, description: desc, recommended_grade: grade }).eq('id', id);
+                if (error) alert("Error: " + error.message);
+                else renderView('tools');
+            }
+        };
+
+        window.handleDeleteTool = async (id) => {
+            if (!checkAdmin()) return;
+            if (confirm("¿Seguro que deseas eliminar esta herramienta?")) {
+                const { error } = await sbClient.from('tools').delete().eq('id', id);
+                if (error) alert("Error: " + error.message);
+                else renderView('tools');
+            }
+        };
+
+        // Codes
+        window.copyCode = (code) => {
+            navigator.clipboard.writeText(code).then(() => alert('Código copiado: ' + code));
+        };
+
+        function handleSearch(query) {
+            const fCodes = formativeCodes.filter(c => c.grade.toLowerCase().includes(query) || c.code.toLowerCase().includes(query));
+            const fTools = tools.filter(t => t.name.toLowerCase().includes(query) || t.description.toLowerCase().includes(query));
+
+            contentArea.innerHTML = `
+                <h2>Resultados para "${query}"</h2>
+                <div style="margin-top:1rem">
+                    ${fCodes.length > 0 ? `<div class="card"><h3>Códigos</h3>${fCodes.map(c => `<p>${c.grade}: <strong>${c.code}</strong></p>`).join('')}</div>` : ''}
+                    ${fTools.length > 0 ? `<div class="card"><h3>Herramientas</h3>${fTools.map(t => `<p><strong>${t.name}</strong> - ${t.description}</p>`).join('')}</div>` : ''}
+                    ${fCodes.length === 0 && fTools.length === 0 ? '<p>No se encontraron resultados.</p>' : ''}
+                </div>
+            `;
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+
+</html>
