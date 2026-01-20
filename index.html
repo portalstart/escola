@@ -91,6 +91,34 @@
             }
         }
 
+        .sidebar-backdrop {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 90;
+            backdrop-filter: blur(2px);
+        }
+
+        .sidebar-backdrop.active {
+            display: block;
+        }
+
+        #mobile-close-btn {
+            display: none;
+            cursor: pointer;
+            margin-left: auto;
+        }
+
+        @media (max-width: 768px) {
+            #mobile-close-btn {
+                display: block;
+            }
+        }
+
         .sidebar.collapsed:not(:hover) .grades-submenu {
             display: none !important;
         }
@@ -606,10 +634,12 @@
 </head>
 
 <body>
+    <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="toggleMobileMenu()"></div>
     <nav class="sidebar" id="main-sidebar">
         <div class="sidebar-header">
             <i data-lucide="graduation-cap" style="color: var(--primary);"></i>
             <h1>Portal Educativo</h1>
+            <i data-lucide="x" id="mobile-close-btn" onclick="toggleMobileMenu()"></i>
         </div>
         <div class="nav-menu">
             <div class="nav-item active" data-view="dashboard">
@@ -632,6 +662,10 @@
             <div class="nav-item" data-view="tools">
                 <i data-lucide="wrench"></i>
                 <span>Herramientas</span>
+            </div>
+            <div class="nav-item" data-view="videos">
+                <i data-lucide="play-circle"></i>
+                <span>Clases Grabadas</span>
             </div>
         </div>
     </nav>
@@ -708,6 +742,7 @@
 
         let announcements = [];
         let tools = [];
+        let recordedClasses = [];
 
         // --- App Logic ---
         const contentArea = document.getElementById('content-area');
@@ -724,8 +759,10 @@
             try {
                 const { data: annData } = await sbClient.from('announcements').select('*').order('id', { ascending: false });
                 const { data: toolsData } = await sbClient.from('tools').select('*').order('name');
+                const { data: videosData } = await sbClient.from('recorded_classes').select('*').order('id', { ascending: false });
                 announcements = annData || [];
                 tools = toolsData || [];
+                recordedClasses = videosData || [];
             } catch (e) {
                 console.error("Fetch error:", e);
             }
@@ -800,9 +837,25 @@
 
         window.toggleMobileMenu = () => {
             const sidebar = document.getElementById('main-sidebar');
+            const backdrop = document.getElementById('sidebar-backdrop');
             sidebar.classList.toggle('show-mobile');
+            backdrop.classList.toggle('active');
             lucide.createIcons();
         };
+
+        // Close sidebar on link click (mobile)
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth <= 768) {
+                if (e.target.closest('.nav-item') || e.target.closest('.grade-link')) {
+                    const sidebar = document.getElementById('main-sidebar');
+                    const backdrop = document.getElementById('sidebar-backdrop');
+                    if (sidebar.classList.contains('show-mobile')) {
+                        sidebar.classList.remove('show-mobile');
+                        backdrop.classList.remove('active');
+                    }
+                }
+            }
+        });
 
         async function renderView(view, param = null) {
             contentArea.innerHTML = '<div class="loader"><div style="border: 3px solid #f3f3f3; border-top: 3px solid var(--primary); border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite;"></div><style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style></div>';
@@ -821,6 +874,9 @@
                     break;
                 case 'tools':
                     renderTools();
+                    break;
+                case 'videos':
+                    renderVideos();
                     break;
                 case 'grade':
                     renderGradeView(param);
@@ -964,6 +1020,49 @@
                     `).join('')}
                 </div>
             `;
+        }
+
+        function renderVideos() {
+            contentArea.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                    <h2>Clases Grabadas (Videos)</h2>
+                    <button class="btn btn-primary" onclick="handleAddVideo()"><i data-lucide="plus"></i> Subir Clase</button>
+                </div>
+                <div class="tools-grid">
+                    ${recordedClasses.length === 0 ? '<p style="text-align:center; grid-column: 1/-1; padding: 2rem; color: var(--text-muted);">No hay clases grabadas disponibles.</p>' :
+                    recordedClasses.map(v => {
+                        const vidId = getYouTubeID(v.url);
+                        const thumb = vidId ? `https://img.youtube.com/vi/${vidId}/mqdefault.jpg` : 'https://via.placeholder.com/320x180?text=Video+Link';
+                        return `
+                        <div class="tool-card">
+                            <div style="position:relative; cursor:pointer;" onclick="window.open('${v.url}')">
+                                <img src="${thumb}" style="width:100%; border-radius:8px; margin-bottom:1rem; display:block;">
+                                <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(37, 99, 235, 0.9); color:white; width:50px; height:50px; border-radius:50%; display:flex; justify-content:center; align-items:center; box-shadow:0 4px 12px rgba(0,0,0,0.2);">
+                                    <i data-lucide="play" style="fill:white;"></i>
+                                </div>
+                            </div>
+                            <h3 style="font-size:1.1rem; margin-bottom:0.5rem;">${v.title}</h3>
+                            <p style="margin: 0.5rem 0; font-size: 0.9rem; color: var(--text-muted); line-height:1.4;">${v.description}</p>
+                            <div style="margin-bottom:1rem; font-size:0.8rem; display:flex; gap:10px; color:var(--text-muted);">
+                                <span><i data-lucide="graduation-cap" style="width:12px; vertical-align:middle;"></i> ${v.grade || 'General'}</span>
+                                <span><i data-lucide="calendar" style="width:12px; vertical-align:middle;"></i> ${v.date || 'N/A'}</span>
+                            </div>
+                            <div class="tool-actions">
+                                <a href="${v.url}" target="_blank" class="btn btn-primary btn-sm" style="flex:1">Ver Clase</a>
+                                <button class="btn btn-outline btn-sm" onclick="handleEditVideo(${v.id})"><i data-lucide="edit-2" style="width:14px;"></i></button>
+                                <button class="btn btn-outline btn-sm" onclick="handleDeleteVideo(${v.id})" style="color:var(--danger); border-color:var(--danger);"><i data-lucide="trash-2" style="width:14px;"></i></button>
+                            </div>
+                        </div>
+                    `}).join('')}
+                </div>
+            `;
+            lucide.createIcons();
+        }
+
+        function getYouTubeID(url) {
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[2].length === 11) ? match[2] : null;
         }
 
         function renderGradeView(grade) {
@@ -1178,6 +1277,44 @@
             }
         };
 
+        // Videos
+        window.handleAddVideo = async () => {
+            if (!checkAdmin()) return;
+            const title = prompt("Título de la clase:");
+            const url = prompt("URL de YouTube:");
+            const desc = prompt("Descripción breve:");
+            const grade = prompt("Grado:");
+            const date = new Date().toLocaleDateString();
+            if (title && url) {
+                const { error } = await sbClient.from('recorded_classes').insert([{ title, url, description: desc, grade, date }]);
+                if (error) alert("Error: " + error.message);
+                else renderView('videos');
+            }
+        };
+
+        window.handleEditVideo = async (id) => {
+            if (!checkAdmin()) return;
+            const video = recordedClasses.find(v => v.id === id);
+            const title = prompt("Editar Título:", video.title);
+            const url = prompt("Editar URL:", video.url);
+            const desc = prompt("Editar Descripción:", video.description);
+            const grade = prompt("Editar Grado:", video.grade);
+            if (title && url) {
+                const { error } = await sbClient.from('recorded_classes').update({ title, url, description: desc, grade }).eq('id', id);
+                if (error) alert("Error: " + error.message);
+                else renderView('videos');
+            }
+        };
+
+        window.handleDeleteVideo = async (id) => {
+            if (!checkAdmin()) return;
+            if (confirm("¿Seguro que deseas eliminar esta clase?")) {
+                const { error } = await sbClient.from('recorded_classes').delete().eq('id', id);
+                if (error) alert("Error: " + error.message);
+                else renderView('videos');
+            }
+        };
+
         // Codes
         window.copyCode = (code) => {
             navigator.clipboard.writeText(code).then(() => alert('Código copiado: ' + code));
@@ -1186,13 +1323,15 @@
         function handleSearch(query) {
             const fCodes = formativeCodes.filter(c => c.grade.toLowerCase().includes(query) || c.code.toLowerCase().includes(query));
             const fTools = tools.filter(t => t.name.toLowerCase().includes(query) || t.description.toLowerCase().includes(query));
+            const fVideos = recordedClasses.filter(v => v.title.toLowerCase().includes(query) || v.grade.toLowerCase().includes(query));
 
             contentArea.innerHTML = `
                 <h2>Resultados para "${query}"</h2>
                 <div style="margin-top:1rem">
                     ${fCodes.length > 0 ? `<div class="card"><h3>Códigos</h3>${fCodes.map(c => `<p>${c.grade}: <strong>${c.code}</strong></p>`).join('')}</div>` : ''}
                     ${fTools.length > 0 ? `<div class="card"><h3>Herramientas</h3>${fTools.map(t => `<p><strong>${t.name}</strong> - ${t.description}</p>`).join('')}</div>` : ''}
-                    ${fCodes.length === 0 && fTools.length === 0 ? '<p>No se encontraron resultados.</p>' : ''}
+                    ${fVideos.length > 0 ? `<div class="card"><h3>Clases Grabadas</h3>${fVideos.map(v => `<p><strong>${v.title}</strong> (${v.grade})</p>`).join('')}</div>` : ''}
+                    ${fCodes.length === 0 && fTools.length === 0 && fVideos.length === 0 ? '<p>No se encontraron resultados.</p>' : ''}
                 </div>
             `;
         }
