@@ -51,9 +51,48 @@
             color: var(--sidebar-text);
             display: flex;
             flex-direction: column;
-            transition: transform 0.3s ease;
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s ease;
             z-index: 100;
             flex-shrink: 0;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .sidebar.collapsed {
+            width: 70px;
+        }
+
+        .sidebar.collapsed .sidebar-header h1,
+        .sidebar.collapsed .nav-item span,
+        .sidebar.collapsed #chevron-icon {
+            display: none;
+        }
+
+        .sidebar.collapsed:hover {
+            width: 260px;
+        }
+
+        .sidebar.collapsed:hover .sidebar-header h1,
+        .sidebar.collapsed:hover .nav-item span,
+        .sidebar.collapsed:hover #chevron-icon {
+            display: inline;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                position: absolute;
+                height: 100%;
+                transform: translateX(-100%);
+            }
+
+            .sidebar.show-mobile {
+                transform: translateX(0);
+                width: 260px;
+            }
+        }
+
+        .sidebar.collapsed:not(:hover) .grades-submenu {
+            display: none !important;
         }
 
         .sidebar-header {
@@ -61,6 +100,7 @@
             display: flex;
             align-items: center;
             gap: 10px;
+            cursor: pointer;
         }
 
         .sidebar-header h1 {
@@ -149,6 +189,20 @@
             flex: 1;
             padding: 2rem;
             overflow-y: auto;
+            position: relative;
+        }
+
+        .menu-toggle {
+            display: none;
+            cursor: pointer;
+            padding: 0.5rem;
+            margin-right: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .menu-toggle {
+                display: block;
+            }
         }
 
         .dashboard-grid {
@@ -552,7 +606,7 @@
 </head>
 
 <body>
-    <nav class="sidebar">
+    <nav class="sidebar" id="main-sidebar">
         <div class="sidebar-header">
             <i data-lucide="graduation-cap" style="color: var(--primary);"></i>
             <h1>Portal Educativo</h1>
@@ -560,33 +614,38 @@
         <div class="nav-menu">
             <div class="nav-item active" data-view="dashboard">
                 <i data-lucide="layout-dashboard"></i>
-                Dashboard
+                <span>Dashboard</span>
             </div>
             <div class="nav-item" id="grades-nav-toggle">
                 <i data-lucide="book-open"></i>
-                Grados
+                <span>Grados</span>
                 <i data-lucide="chevron-down" style="margin-left: auto; width: 16px;" id="chevron-icon"></i>
             </div>
             <div class="grades-submenu" id="grades-submenu">
-                <div class="nav-item grade-link" data-grade="3ro Primaria">3ro Primaria</div>
+                <div class="nav-item grade-link" data-grade="3ro Primaria"><span>3ro Primaria</span></div>
                 <div id="dynamic-grades-sidebar"></div>
             </div>
             <div class="nav-item" data-view="formative">
                 <i data-lucide="code"></i>
-                Códigos Formative
+                <span>Códigos Formative</span>
             </div>
             <div class="nav-item" data-view="tools">
                 <i data-lucide="wrench"></i>
-                Herramientas
+                <span>Herramientas</span>
             </div>
         </div>
     </nav>
 
     <div class="app-container">
         <header>
-            <div class="search-container">
-                <i data-lucide="search" style="width: 18px; color: var(--text-muted);"></i>
-                <input type="text" id="global-search" placeholder="Buscador global (grado, código, herramienta)...">
+            <div style="display: flex; align-items: center;">
+                <div class="menu-toggle" onclick="toggleMobileMenu()">
+                    <i data-lucide="menu"></i>
+                </div>
+                <div class="search-container">
+                    <i data-lucide="search" style="width: 18px; color: var(--text-muted);"></i>
+                    <input type="text" id="global-search" placeholder="Buscador global (grado, código, herramienta)...">
+                </div>
             </div>
             <button class="btn btn-outline" onclick="handleAddAnn()">
                 <i data-lucide="plus"></i> Nuevo Anuncio
@@ -679,8 +738,8 @@
             for (let i = 4; i <= 11; i++) {
                 const label = `${i}${suffixes[i]}`;
                 html += `
-                    <div class="nav-item grade-link" data-grade="${label} A">${label} A</div>
-                    <div class="nav-item grade-link" data-grade="${label} B">${label} B</div>
+                    <div class="nav-item grade-link" data-grade="${label} A"><span>${label} A</span></div>
+                    <div class="nav-item grade-link" data-grade="${label} B"><span>${label} B</span></div>
                 `;
             }
             container.innerHTML = html;
@@ -723,7 +782,27 @@
                 if (query.length > 2) handleSearch(query);
                 else if (query.length === 0) renderView('dashboard');
             });
+
+            // Sidebar toggle for desktop/mobile
+            const sidebar = document.getElementById('main-sidebar');
+            if (window.innerWidth > 768) {
+                sidebar.classList.add('collapsed');
+            }
+
+            // Toggle collapse on header click
+            document.querySelector('.sidebar-header').addEventListener('click', () => {
+                sidebar.classList.toggle('collapsed');
+            });
+
+            // Specific request: Toggle on dashboard touch/click (optional logic)
+            // But we'll keep it simple and effective.
         }
+
+        window.toggleMobileMenu = () => {
+            const sidebar = document.getElementById('main-sidebar');
+            sidebar.classList.toggle('show-mobile');
+            lucide.createIcons();
+        };
 
         async function renderView(view, param = null) {
             contentArea.innerHTML = '<div class="loader"><div style="border: 3px solid #f3f3f3; border-top: 3px solid var(--primary); border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite;"></div><style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style></div>';
@@ -840,7 +919,7 @@
             contentArea.innerHTML = `
                 <div class="card">
                     <div class="card-title"><i data-lucide="book-open"></i> Clases de Formative 2026</div>
-                    <div class="table-container">
+                    <div class="table-container" style="max-height: 500px; overflow-y: auto;">
                         <table class="data-table">
                             <thead>
                                 <tr><th>Grado / Sección</th><th>Código</th><th>Acciones</th></tr>
