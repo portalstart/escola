@@ -867,6 +867,95 @@
         body.dark-mode .sticky-notes-textarea {
             color: #fef9c3;
         }
+
+        /* Nao Assistant Styles */
+        .nao-container {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            pointer-events: none;
+        }
+
+        .nao-avatar {
+            width: 120px;
+            height: 120px;
+            cursor: pointer;
+            pointer-events: auto;
+            animation: nao-float 3s ease-in-out infinite;
+            filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.2));
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .nao-avatar:hover {
+            transform: scale(1.1);
+        }
+
+        .nao-bubble {
+            background: var(--bg-card);
+            border: 2px solid var(--primary);
+            border-radius: 16px;
+            padding: 1rem;
+            max-width: 250px;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            position: relative;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            color: var(--text-main);
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.4s ease;
+            pointer-events: auto;
+            visibility: hidden;
+        }
+
+        .nao-bubble.active {
+            opacity: 1;
+            transform: translateY(0);
+            visibility: visible;
+        }
+
+        .nao-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            right: 40px;
+            border-width: 10px 10px 0;
+            border-style: solid;
+            border-color: var(--primary) transparent transparent;
+        }
+
+        .nao-bubble::before {
+            content: '';
+            position: absolute;
+            bottom: -7px;
+            right: 40px;
+            border-width: 10px 10px 0;
+            border-style: solid;
+            border-color: var(--bg-card) transparent transparent;
+            z-index: 1;
+        }
+
+        @keyframes nao-float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-15px);
+            }
+        }
+
+        /* Hide the old chat button since Nao will replace it */
+        .chat-button {
+            display: none !important;
+        }
     </style>
 </head>
 
@@ -892,10 +981,7 @@
                 <div class="nav-item grade-link" data-grade="3ro Primaria"><span>3ro Primaria</span></div>
                 <div id="dynamic-grades-sidebar"></div>
             </div>
-            <div class="nav-item" data-view="formative">
-                <i data-lucide="code"></i>
-                <span>Códigos Formative</span>
-            </div>
+
             <div class="nav-item" data-view="tools">
                 <i data-lucide="wrench"></i>
                 <span>Herramientas</span>
@@ -915,7 +1001,9 @@
                 </div>
                 <div class="search-container">
                     <i data-lucide="search" style="width: 18px; color: var(--text-muted);"></i>
-                    <input type="text" id="global-search" placeholder="Buscador global (grado, código, herramienta)...">
+                    <input type="text" id="global-search"
+                        oninput="if(this.value.length > 2) executeSearchV3(this.value.toLowerCase()); else if(this.value.length === 0) renderView('dashboard');"
+                        placeholder="Buscador global (grado, código, herramienta)...">
                 </div>
             </div>
             <div style="display: flex; align-items: center; gap: 10px;">
@@ -950,6 +1038,15 @@
         </header>
 
         <main id="content-area"></main>
+
+        <!-- Nao Assistant -->
+        <div class="nao-container">
+            <div id="nao-bubble" class="nao-bubble">
+                ¿Qué puedo hacer por ti hoy?
+            </div>
+            <img src="C:/Users/PC-Maestro/.gemini/antigravity/brain/84e09275-c05d-4a2b-86d9-b1b35ac5fb76/uploaded_media_1770238698002.png"
+                id="nao-avatar" class="nao-avatar" alt="Nao Asistente" onclick="toggleChat()">
+        </div>
 
         <footer>
             Technology by <a href="https://www.lerencloud.com/" target="_blank">Leren Cloud</a>
@@ -1019,6 +1116,36 @@
             renderView('dashboard');
             lucide.createIcons();
             startSchoolTimer();
+            initNaoAssistant();
+        }
+
+        // --- Nao Assistant Logic ---
+        function initNaoAssistant() {
+            const bubble = document.getElementById('nao-bubble');
+            const messages = [
+                "¿Qué puedo hacer por ti hoy?",
+                "Recuerda que en <b>Clases Grabadas</b> están los videos para repasar tu clase del día.",
+                "En <b>Herramientas</b> encuentras sitios de ayuda y aplicaciones educativas.",
+                "En el <b>Dashboard</b> puedes ver los avisos importantes y tus estadísticas.",
+                "¿Tienes alguna duda con tus códigos? ¡Dímelo en el chat!",
+                "¡Hola! Soy Nao, tu asistente de Leren Cloud. Estoy aquí para ayudarte."
+            ];
+            let currentMsg = 0;
+
+            // Initial message
+            setTimeout(() => {
+                bubble.classList.add('active');
+            }, 2000);
+
+            // Cycle messages every 15 seconds
+            setInterval(() => {
+                bubble.classList.remove('active');
+                setTimeout(() => {
+                    currentMsg = (currentMsg + 1) % messages.length;
+                    bubble.innerHTML = messages[currentMsg];
+                    bubble.classList.add('active');
+                }, 1000);
+            }, 15000);
         }
 
         // --- Timer Logic ---
@@ -1268,11 +1395,7 @@
                 }
             });
 
-            document.getElementById('global-search').addEventListener('input', (e) => {
-                const query = e.target.value.toLowerCase();
-                if (query.length > 2) handleSearch(query);
-                else if (query.length === 0) renderView('dashboard');
-            });
+            // Event listener for global-search removed in favor of inline oninput for V3 robustness
 
             // Sidebar toggle for desktop/mobile
             const sidebar = document.getElementById('main-sidebar');
@@ -1323,9 +1446,7 @@
                 case 'dashboard':
                     renderDashboard();
                     break;
-                case 'formative':
-                    renderFormative();
-                    break;
+
                 case 'tools':
                     renderTools();
                     break;
@@ -1474,32 +1595,7 @@
             `;
         }
 
-        function renderFormative() {
-            contentArea.innerHTML = `
-                <div class="card">
-                    <div class="card-title"><i data-lucide="book-open"></i> Clases de Formative 2026</div>
-                    <div class="table-container" style="max-height: 500px; overflow-y: auto;">
-                        <table class="data-table">
-                            <thead>
-                                <tr><th>Grado / Sección</th><th>Código</th><th>Acciones</th></tr>
-                            </thead>
-                            <tbody>
-                                ${formativeCodes.map(c => `
-                                    <tr>
-                                        <td><strong>${c.grade}</strong></td>
-                                        <td><code>${c.code}</code></td>
-                                        <td style="display:flex; gap:5px;">
-                                            <button class="btn btn-primary btn-sm" onclick="window.open('https://app.formative.com/join?code=${c.code}')">Unirse</button>
-                                            <button class="btn btn-outline btn-sm" onclick="copyCode('${c.code}')">Copiar</button>
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            `;
-        }
+
 
         function renderTools() {
             contentArea.innerHTML = `
@@ -1533,46 +1629,86 @@
             `;
         }
 
-        function renderVideos() {
+        function renderVideos(videosToRender = null) {
+            const studentGrade = localStorage.getItem('student_grade') || 'todos';
+            const selectedGrade = document.getElementById('video-grade-filter')?.value || studentGrade;
+            const searchTerm = document.getElementById('video-search')?.value || '';
+
+            // If no search/filter specified and we're not forcing a list, default to student's grade
+            let list = videosToRender;
+            if (!list && searchTerm === '' && (selectedGrade === studentGrade || selectedGrade === 'todos')) {
+                list = recordedClasses.filter(v => studentGrade === 'todos' || v.grade === studentGrade);
+            } else if (!list) {
+                list = recordedClasses;
+            }
+
             contentArea.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
-                    <h2>Clases Grabadas (Videos)</h2>
-                    <button class="btn btn-primary" onclick="handleAddVideo()"><i data-lucide="plus"></i> Subir Clase</button>
+                <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap: wrap; gap: 1rem;">
+                        <div>
+                            <h2 style="font-size: 1.5rem; font-weight: 700; color: var(--primary); margin-bottom: 0.25rem;">Clases Grabadas</h2>
+                            <p style="font-size: 0.85rem; color: var(--text-muted);">
+                                ${studentGrade !== 'todos' ? `Mostrando videos asignados a: <strong>${studentGrade}</strong>` : 'Explora todas las clases grabadas disponibles.'}
+                            </p>
+                        </div>
+                        <button class="btn btn-primary" onclick="handleAddVideo()"><i data-lucide="plus"></i> Subir Clase</button>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <div class="search-container" style="flex: 2; min-width: 280px; margin: 0; background: var(--bg-main); border: 1px solid var(--border);">
+                            <i data-lucide="search" style="width: 20px; color: var(--text-muted);"></i>
+                            <input type="text" id="video-search" placeholder="Buscar por título, tema o descripción..." oninput="handleVideoSearch()" value="${searchTerm}" style="font-size: 1rem; padding: 0.5rem;">
+                        </div>
+                        <select id="video-grade-filter" class="btn btn-outline" style="flex: 1; min-width: 180px; height: 46px; background: var(--bg-main); border: 1px solid var(--border);" onchange="handleVideoSearch()">
+                            <option value="todos">Todos los grados</option>
+                            <option value="3ro Primaria" ${selectedGrade === '3ro Primaria' ? 'selected' : ''}>3ro Primaria</option>
+                            ${Array.from({ length: 8 }, (_, i) => i + 4).map(i => {
+                const suff = { 4: 'to', 5: 'to', 6: 'to', 7: 'mo', 8: 'vo', 9: 'no', 10: 'mo', 11: 'vo' }[i];
+                return `
+                                    <option value="${i}${suff} A" ${selectedGrade === `${i}${suff} A` ? 'selected' : ''}>${i}${suff} A</option>
+                                    <option value="${i}${suff} B" ${selectedGrade === `${i}${suff} B` ? 'selected' : ''}>${i}${suff} B</option>
+                                `;
+            }).join('')}
+                        </select>
+                    </div>
                 </div>
                 <div class="tools-grid">
-                    ${recordedClasses.length === 0 ? '<p style="text-align:center; grid-column: 1/-1; padding: 2rem; color: var(--text-muted);">No hay clases grabadas disponibles.</p>' :
-                    recordedClasses.map(v => {
-                        const vidId = getYouTubeID(v.url);
-                        const thumb = vidId ? `https://img.youtube.com/vi/${vidId}/mqdefault.jpg` : 'https://via.placeholder.com/320x180?text=Video+Link';
-                        const progress = localStorage.getItem(`video_progress_${v.id}`) || 0;
-                        return `
-                        <div class="tool-card">
-                            <div style="position:relative; cursor:pointer;" onclick="handleVideoClick(${v.id}, '${v.url}')">
-                                <img src="${thumb}" style="width:100%; border-radius:8px; margin-bottom:1rem; display:block;">
-                                <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(37, 99, 235, 0.9); color:white; width:50px; height:50px; border-radius:50%; display:flex; justify-content:center; align-items:center; box-shadow:0 4px 12px rgba(0,0,0,0.2);">
-                                    <i data-lucide="play" style="fill:white;"></i>
-                                </div>
-                            </div>
-                            <div class="video-progress-container">
-                                <div class="video-progress-fill" style="width: ${progress}%"></div>
-                            </div>
-                            <span class="video-progress-text">${progress}% completado</span>
-                            <h3 style="font-size:1.1rem; margin-top:0.5rem; margin-bottom:0.5rem;">${v.title}</h3>
-                            <p style="margin: 0.5rem 0; font-size: 0.9rem; color: var(--text-muted); line-height:1.4;">${v.description}</p>
-                            <div style="margin-bottom:1rem; font-size:0.8rem; display:flex; gap:10px; color:var(--text-muted);">
-                                <span><i data-lucide="graduation-cap" style="width:12px; vertical-align:middle;"></i> ${v.grade || 'General'}</span>
-                                <span><i data-lucide="calendar" style="width:12px; vertical-align:middle;"></i> ${v.date || 'N/A'}</span>
-                            </div>
-                            <div class="tool-actions">
-                                <button class="btn btn-primary btn-sm" style="flex:1" onclick="handleVideoClick(${v.id}, '${v.url}')">Ver Clase</button>
-                                <button class="btn btn-outline btn-sm" onclick="handleEditVideo(${v.id})"><i data-lucide="edit-2" style="width:14px;"></i></button>
-                                <button class="btn btn-outline btn-sm" onclick="handleDeleteVideo(${v.id})" style="color:var(--danger); border-color:var(--danger);"><i data-lucide="trash-2" style="width:14px;"></i></button>
-                            </div>
-                        </div>
-                    `}).join('')}
+                    ${list.length === 0 ? '<p style="text-align:center; grid-column: 1/-1; padding: 2rem; color: var(--text-muted);">No se encontraron clases grabadas para los criterios seleccionados.</p>' :
+                    list.map(v => generateVideoCardHTML(v)).join('')}
                 </div>
             `;
             lucide.createIcons();
+        }
+
+        function generateVideoCardHTML(v) {
+            const vidId = getYouTubeID(v.url);
+            const thumb = vidId ? `https://img.youtube.com/vi/${vidId}/mqdefault.jpg` : 'https://via.placeholder.com/320x180?text=Video+Link';
+            const progress = localStorage.getItem(`video_progress_${v.id}`) || 0;
+            return `
+                <div class="tool-card">
+                    <div style="position:relative; cursor:pointer;" onclick="handleVideoClick(${v.id}, '${v.url}')">
+                        <img src="${thumb}" style="width:100%; border-radius:8px; margin-bottom:1rem; display:block;">
+                        <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(37, 99, 235, 0.9); color:white; width:50px; height:50px; border-radius:50%; display:flex; justify-content:center; align-items:center; box-shadow:0 4px 12px rgba(0,0,0,0.2);">
+                            <i data-lucide="play" style="fill:white;"></i>
+                        </div>
+                    </div>
+                    <div class="video-progress-container">
+                        <div class="video-progress-fill" style="width: ${progress}%"></div>
+                    </div>
+                    <span class="video-progress-text">${progress}% completado</span>
+                    <h3 style="font-size:1.1rem; margin-top:0.5rem; margin-bottom:0.5rem;">${v.title}</h3>
+                    <p style="margin: 0.5rem 0; font-size: 0.9rem; color: var(--text-muted); line-height:1.4;">${v.description}</p>
+                    <div style="margin-bottom:1rem; font-size:0.8rem; display:flex; gap:10px; color:var(--text-muted);">
+                        <span><i data-lucide="graduation-cap" style="width:12px; vertical-align:middle;"></i> ${v.grade || 'General'}</span>
+                        <span><i data-lucide="calendar" style="width:12px; vertical-align:middle;"></i> ${v.date || 'N/A'}</span>
+                    </div>
+                    <div class="tool-actions">
+                        <a href="${v.url}" target="_blank" class="btn btn-primary btn-sm" style="flex:1; justify-content:center; text-decoration:none;" onclick="localStorage.setItem('video_progress_${v.id}', 100)">Ver Clase</a>
+                        <button class="btn btn-outline btn-sm" onclick="handleEditVideo(${v.id})"><i data-lucide="edit-2" style="width:14px;"></i></button>
+                        <button class="btn btn-outline btn-sm" onclick="handleDeleteVideo(${v.id})" style="color:var(--danger); border-color:var(--danger);"><i data-lucide="trash-2" style="width:14px;"></i></button>
+                    </div>
+                </div>
+            `;
         }
 
         function getYouTubeID(url) {
@@ -1582,6 +1718,7 @@
         }
 
         function renderGradeView(grade) {
+            localStorage.setItem('student_grade', grade); // Save active grade context
             const data = formativeCodes.find(c => c.grade === grade);
             const is7 = grade.includes('7mo');
 
@@ -1873,21 +2010,92 @@
             renderView(currentView);
         };
 
-        function handleSearch(query) {
-            const fCodes = formativeCodes.filter(c => c.grade.toLowerCase().includes(query) || c.code.toLowerCase().includes(query));
-            const fTools = tools.filter(t => t.name.toLowerCase().includes(query) || t.description.toLowerCase().includes(query));
-            const fVideos = recordedClasses.filter(v => v.title.toLowerCase().includes(query) || v.grade.toLowerCase().includes(query));
+        window.executeSearchV3 = function (query) {
+            const fCodes = formativeCodes.filter(c => (c.grade && c.grade.toLowerCase().includes(query)) || (c.code && c.code.toLowerCase().includes(query)));
+            const fTools = tools.filter(t => (t.name && t.name.toLowerCase().includes(query)) || (t.description && t.description.toLowerCase().includes(query)));
+            const fVideos = recordedClasses.filter(v => (v.title && v.title.toLowerCase().includes(query)) || (v.grade && v.grade.toLowerCase().includes(query)));
 
             contentArea.innerHTML = `
-                <h2>Resultados para "${query}"</h2>
-                <div style="margin-top:1rem">
-                    ${fCodes.length > 0 ? `<div class="card"><h3>Códigos</h3>${fCodes.map(c => `<p>${c.grade}: <strong>${c.code}</strong></p>`).join('')}</div>` : ''}
-                    ${fTools.length > 0 ? `<div class="card"><h3>Herramientas</h3>${fTools.map(t => `<p><strong>${t.name}</strong> - ${t.description}</p>`).join('')}</div>` : ''}
-                    ${fVideos.length > 0 ? `<div class="card"><h3>Clases Grabadas</h3>${fVideos.map(v => `<p><strong>${v.title}</strong> (${v.grade})</p>`).join('')}</div>` : ''}
-                    ${fCodes.length === 0 && fTools.length === 0 && fVideos.length === 0 ? '<p>No se encontraron resultados.</p>' : ''}
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 2rem;">
+                    <h2 style="margin:0;">Resultados para "${query}"</h2>
+                    <span style="background:var(--success); color:white; padding:4px 12px; border-radius:20px; font-size:0.75rem; font-weight:700; display:inline-flex; align-items:center; gap:5px;">
+                        <i data-lucide="check-circle" style="width:14px; height:14px;"></i> Buscador V3 Activo
+                    </span>
+                </div>
+                
+                <div style="display: flex; flex-direction: column; gap: 2rem;">
+                    ${fCodes.length > 0 ? `
+                        <div class="card">
+                            <div class="card-title"><i data-lucide="key"></i> Códigos de Clase</div>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem;">
+                                ${fCodes.map(c => `
+                                    <div style="background: var(--bg-main); padding: 1rem; border-radius: 8px; border: 1px solid var(--border);">
+                                        <div style="font-size: 0.8rem; color: var(--text-muted);">${c.grade}</div>
+                                        <div style="font-size: 1.2rem; font-weight: 700; color: var(--primary);">${c.code}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    ${fTools.length > 0 ? `
+                        <div>
+                            <div class="card-title"><i data-lucide="wrench"></i> Herramientas</div>
+                            <div class="tools-grid">
+                                ${fTools.map(t => `
+                                    <div class="tool-card">
+                                        <h3>${t.name}</h3>
+                                        <p style="font-size: 0.9rem; color: var(--text-muted); margin: 0.5rem 0;">${t.description}</p>
+                                        <a href="${t.url}" target="_blank" class="btn btn-primary btn-sm" style="width: 100%; justify-content: center;">Abrir</a>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    ${fVideos.length > 0 ? `
+                        <div>
+                            <div class="card-title"><i data-lucide="play-circle"></i> Clases Grabadas</div>
+                            <div class="tools-grid">
+                                ${fVideos.map(v => generateVideoCardHTML(v)).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    ${fCodes.length === 0 && fTools.length === 0 && fVideos.length === 0 ? `
+                        <div style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                            <i data-lucide="search-x" style="width: 48px; height: 48px; margin-bottom: 1rem;"></i>
+                            <p>No se encontraron resultados para su búsqueda.</p>
+                        </div>
+                    ` : ''}
                 </div>
             `;
+            lucide.createIcons();
         }
+
+        window.handleVideoSearch = () => {
+            const query = document.getElementById('video-search').value.toLowerCase();
+            const gradeFilter = document.getElementById('video-grade-filter').value;
+
+            const filtered = recordedClasses.filter(v => {
+                const titleMatch = v.title && v.title.toLowerCase().includes(query);
+                const descMatch = v.description && v.description.toLowerCase().includes(query);
+                const matchesQuery = query === '' || titleMatch || descMatch;
+
+                const matchesGrade = gradeFilter === 'todos' || v.grade === gradeFilter;
+                return matchesQuery && matchesGrade;
+            });
+
+            renderVideos(filtered);
+
+            // Re-focus and preserve cursor position
+            const input = document.getElementById('video-search');
+            if (input) {
+                input.focus();
+                const len = input.value.length;
+                input.setSelectionRange(len, len);
+            }
+        };
 
         document.addEventListener('DOMContentLoaded', init);
     </script>
